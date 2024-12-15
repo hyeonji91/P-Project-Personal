@@ -203,7 +203,7 @@ def evaluate(model, dataloader, criterion):
             output = model(data)
             eval_loss += criterion(output, label)
             prediction = torch.argmax(output, 1)
-            correct += (output == prediction).sum().item()
+            correct += (label == prediction).sum().item()
     
     eval_loss /= len(dataloader.dataset)
     eval_accuracy = 100 * correct / len(dataloader.dataset)
@@ -219,16 +219,28 @@ set_env(42) # 시드고정
 
 
 num_of_video = 3000
-video_root_path = "F:/HyeonjiKim/Downloads/signLanguageDataset/0001~3000(video)"
+if DEVICE == torch.device("cuda"):
+    video_root_path = "/media/vom/HDD1/hj/p-project/0001~3000(video)"
+else:
+    video_root_path = "F:/HyeonjiKim/Downloads/signLanguageDataset/0001~3000(video)"
 # keypoints = extract_video_list_keypoint(video_root)
 # data_preprocessing(keypoints)
 
 # video file path 읽기
 video_file_list = os.listdir(video_root_path) # video 이름
+# sorting
+video_file_series = pd.Series(video_file_list)
+video_file_series.sort_values(ascending=True, inplace=True)
+video_file_list = list(video_file_series)
+
 video_path_list = np.array([os.path.join(video_root_path, file) for file in video_file_list])
 
-# label읽기 
-df = pd.read_excel('F:/HyeonjiKim/Downloads/signLanguageDataset/KETI-2017-SL-Annotation-v2_1.xlsx')
+
+# label읽기
+if DEVICE == torch.device("cuda"):
+    df = pd.read_excel('/media/vom/HDD1/hj/p-project/KETI-2017-SL-Annotation-v2_1.xlsx')
+else:
+    df = pd.read_excel('F:/HyeonjiKim/Downloads/signLanguageDataset/KETI-2017-SL-Annotation-v2_1.xlsx')
 df.sort_values(by = '번호', ascending=True, inplace=True)
 label_list = df['한국어'].tolist()
 label_list = np.array(label_list[:num_of_video])
@@ -242,7 +254,7 @@ X_train, X_test, y_train, y_test = train_test_split(video_path_list, label_list,
 
 train_dataset = SignLangDataSet(X_train, y_train, label_to_idx)
 test_dataset = SignLangDataSet(X_test, y_test, label_to_idx)
-train_dataloader = DataLoader(train_dataset, batch_size=10, shuffle=True)
+train_dataloader = DataLoader(train_dataset, batch_size=400, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
 
