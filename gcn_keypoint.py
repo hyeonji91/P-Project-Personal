@@ -269,7 +269,7 @@ epochs = 1
 # 훈련 실행
 for epoch in range(epochs):
     train_loss = train(model, train_dataloader, optimizer, criterion, epoch)
-    val_loss, val_accuracy = evaluate(model, train_dataloader, criterion)
+    val_loss, val_accuracy = evaluate(model, test_dataloader, criterion)
 
     if val_accuracy > best:
         best = val_accuracy
