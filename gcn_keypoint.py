@@ -9,6 +9,8 @@ from sklearn.model_selection import train_test_split
 from st_gcn import STGCN
 import random
 from tqdm import tqdm
+import time
+import wandb
 
 # 시드고정
 def set_env(seed):
@@ -210,13 +212,25 @@ def evaluate(model, dataloader, criterion):
     eval_accuracy = 100 * correct / len(dataloader.dataset)
     return eval_loss, eval_accuracy
 
-
+### hyperparameter setting ###
+batch_size = 400
+epochs = 400
+learning_rate = 0.001
 
 ### GPU Setting ###
 USE_CUDA = torch.cuda.is_available()
 DEVICE = torch.device("cuda" if USE_CUDA else 'cpu')
 print(DEVICE)
 set_env(42) # 시드고정
+
+### setting wandb ###
+wandb.init(project="sign-language-st-gcn",
+
+           config = {
+               "batch_size": batch_size,
+               "epochs": epochs,
+               "learning_rate" : learning_rate
+           })
 
 #
 num_of_video = 3000
@@ -236,7 +250,7 @@ num_of_video = 3000
 #
 # video_path_list = np.array([os.path.join(video_root_path, file) for file in video_file_list])
 
-save_path = 'keypoint1~3000.npy'
+save_path = 'data/keypoint1~3000.npy'
 keypoint_load = np.load(save_path)
 print(keypoint_load.shape)
 
@@ -259,7 +273,7 @@ X_train, X_test, y_train, y_test = train_test_split(keypoint_load, label_list, t
 
 train_dataset = SignLangDataSet(X_train, y_train, label_to_idx)
 test_dataset = SignLangDataSet(X_test, y_test, label_to_idx)
-train_dataloader = DataLoader(train_dataset, batch_size=400, shuffle=True)
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
 
@@ -267,14 +281,17 @@ test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 graph_args = {"layout": "mediapipe", "strategy": "spatial"}
 model = STGCN(in_channels=3, num_class=420, graph_args=graph_args, edge_importance_weighting=True).to(DEVICE)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001)
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0.0001)
 criterion = torch.nn.CrossEntropyLoss().to(DEVICE)
-epochs = 1
+best =0
+
+wandb.watch(model, log="all")
 
 # 훈련 실행
-for epoch in tqdm(range(epochs)):
+for epoch in tqdm(range(epochs), desc="train time", ):
     train_loss = train(model, train_dataloader, optimizer, criterion, epoch)
     val_loss, val_accuracy = evaluate(model, test_dataloader, criterion)
+    wandb.log({"train_loss": train_loss, "val_loss": val_loss, "val_accuracy": val_accuracy})
 
     if val_accuracy > best:
         best = val_accuracy
