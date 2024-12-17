@@ -8,7 +8,6 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from st_gcn import STGCN
 import random
-from tqdm import tqdm
 
 # 시드고정
 def set_env(seed):
@@ -138,77 +137,32 @@ def sample_keypoints(keypoints, max_len):
     return sampled_keypoints
 
 class SignLangDataSet(Dataset):
-    def __init__(self, keypoints, labels, label_to_idx, max_len=30):
+    def __init__(self, video_paths, labels, label_to_idx, max_len=30):
         """
         Args:
-            keypoints (list): keypoint 리스트
+            video_paths (list): 영상 경로 리스트
             labels (list): 각 영상에 대한 레이블 리스트
         """
-        self.keypoints = keypoints
+        self.video_paths = video_paths
         self.labels = labels
         self.label_to_idx = label_to_idx  # 문자열 -> 정수 변환 매핑
         self.max_len = max_len  # 최대 프레임 길이 설정
 
     
     def __len__(self):
-        return len(self.keypoints)
+        return len(self.video_paths)
     
     def __getitem__(self, idx):
-        keypoints = self.keypoints[idx]
+        video_path = self.video_paths[idx]
         label = self.labels[idx]
-        #
-        # keypoints = extract_keypoints(video_path) # (T, V, C) 형식 반환
-        # keypoints = sample_keypoints(keypoints, self.max_len)  # (max_len, V, C)
+
+        keypoints = extract_keypoints(video_path) # (T, V, C) 형식 반환
+        keypoints = sample_keypoints(keypoints, self.max_len)  # (max_len, V, C)
         data = data_preprocessing(keypoints) # (C, T, V, M) 형식으로 변환
 
         # 문자열 레이블 -> 정수 변환
         label_idx = self.label_to_idx[label]
         return data, torch.tensor(label_idx, dtype=torch.long)
-
-
-# 훈련
-def train(model, dataloader, optimizer, criterion, epoch):
-    model.train()
-    total_loss = 0.
-    train_progress = 0
-
-    for batch_idx, (data, label) in enumerate(dataloader):
-        data, label = data.float().to(DEVICE), label.long().to(DEVICE)
-
-        optimizer.zero_grad()
-        output = model(data)
-        loss = criterion(output, label)
-        loss.backward()
-        optimizer.step()
-
-        total_loss += loss.item()
-        train_progress += len(data)
-        
-        print("Train epoch : {} [{}/{}], learning cost {}, avg cost {}".format(
-            epoch, train_progress, len(dataloader.dataset),
-            loss.item(),
-            total_loss / (batch_idx + 1)
-        ))
-        
-    return total_loss
-
-def evaluate(model, dataloader, criterion):
-    model.eval()
-    eval_loss = 0
-    correct = 0
-
-    with torch.no_grad():
-        for batch_idx, (data, label) in enumerate(dataloader):
-            data, label = data.to(DEVICE), label.to(DEVICE)
-
-            output = model(data)
-            eval_loss += criterion(output, label)
-            prediction = torch.argmax(output, 1)
-            correct += (label == prediction).sum().item()
-    
-    eval_loss /= len(dataloader.dataset)
-    eval_accuracy = 100 * correct / len(dataloader.dataset)
-    return eval_loss, eval_accuracy
 
 
 
@@ -218,27 +172,23 @@ DEVICE = torch.device("cuda" if USE_CUDA else 'cpu')
 print(DEVICE)
 set_env(42) # 시드고정
 
-#
-num_of_video = 3000
-# if DEVICE == torch.device("cuda"):
-#     video_root_path = "/media/vom/HDD1/hj/p-project/0001~3000(video)"
-# else:
-#     video_root_path = "F:/HyeonjiKim/Downloads/signLanguageDataset/0001~3000(video)"
-# # keypoints = extract_video_list_keypoint(video_root)
-# # data_preprocessing(keypoints)
-#
-# # video file path 읽기
-# video_file_list = os.listdir(video_root_path) # video 이름
-# # sorting
-# video_file_series = pd.Series(video_file_list)
-# video_file_series.sort_values(ascending=True, inplace=True)
-# video_file_list = list(video_file_series)
-#
-# video_path_list = np.array([os.path.join(video_root_path, file) for file in video_file_list])
 
-save_path = 'keypoint1~3000.npy'
-keypoint_load = np.load(save_path)
-print(keypoint_load.shape)
+num_of_video = 3000
+if DEVICE == torch.device("cuda"):
+    video_root_path = "/media/vom/HDD1/hj/p-project/0001~3000(video)"
+else:
+    video_root_path = "F:/HyeonjiKim/Downloads/signLanguageDataset/0001~3000(video)"
+# keypoints = extract_video_list_keypoint(video_root)
+# data_preprocessing(keypoints)
+
+# video file path 읽기
+video_file_list = os.listdir(video_root_path) # video 이름
+# sorting
+video_file_series = pd.Series(video_file_list)
+video_file_series.sort_values(ascending=True, inplace=True)
+video_file_list = list(video_file_series)
+
+video_path_list = np.array([os.path.join(video_root_path, file) for file in video_file_list])
 
 
 # label읽기
@@ -252,34 +202,28 @@ label_list = np.array(label_list[:num_of_video])
 
 # 숫자로 labeling, ex '고압전선' : 323
 label_to_idx = {label: idx for idx, label in enumerate(set(label_list))}
-
+max_len = 30
 
 #데이터 생성
-X_train, X_test, y_train, y_test = train_test_split(keypoint_load, label_list, test_size = 0.2, random_state=42, stratify=label_list)
+X_train, X_test, y_train, y_test = train_test_split(video_path_list, label_list, test_size = 0.2, random_state=42, stratify=label_list)
+V = 75
+C = 3
+keypoint_array = np.empty((0, 30, 75, 3))
+print(keypoint_array)
 
-train_dataset = SignLangDataSet(X_train, y_train, label_to_idx)
-test_dataset = SignLangDataSet(X_test, y_test, label_to_idx)
-train_dataloader = DataLoader(train_dataset, batch_size=400, shuffle=True)
-test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False)
+for video_path in video_path_list:
+    keypoints = extract_keypoints(video_path)  # (T, V, C) 형식 반환
+    keypoints = sample_keypoints(keypoints, max_len)  # (max_len, V, C)
+    keypoints = keypoints[np.newaxis, ...]  # 첫 번째 차원 추가
+    keypoint_array = np.append(keypoint_array, keypoints, axis = 0)
 
+print(keypoint_array)
+print(keypoint_array.shape)
+save_path = 'keypoint1~3000.npy'
+np.save(save_path, keypoint_array)
 
-# 모델 초기화
-graph_args = {"layout": "mediapipe", "strategy": "spatial"}
-model = STGCN(in_channels=3, num_class=420, graph_args=graph_args, edge_importance_weighting=True).to(DEVICE)
-
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0001)
-criterion = torch.nn.CrossEntropyLoss().to(DEVICE)
-epochs = 1
-
-# 훈련 실행
-for epoch in tqdm(range(epochs)):
-    train_loss = train(model, train_dataloader, optimizer, criterion, epoch)
-    val_loss, val_accuracy = evaluate(model, test_dataloader, criterion)
-
-    if val_accuracy > best:
-        best = val_accuracy
-        torch.save(model.state_dict(), "model/best_model.pth")
-    print(f'[{epoch}] Validation Loss : {val_loss:.4f}, Accuracy : {val_accuracy:.4f}%')
+keypoint_load = np.load(save_path)
+print(keypoint_load.shape)
 
 print("[FINISH]")
 
