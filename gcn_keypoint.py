@@ -264,14 +264,12 @@ df.sort_values(by = '번호', ascending=True, inplace=True)
 label_list = df['한국어'].tolist()
 label_list = np.array(label_list[:num_of_video])
 
-# 숫자로 labeling, ex '고압전선' : 323
-label_to_idx = {label: idx for idx, label in enumerate(set(label_list))}
 
-### label to idx 저장 ###
-# import pickle
-# with open('data/label_to_idx.pickle', 'wb') as f:
-#     pickle.dump(label_to_idx, f, pickle.HIGHEST_PROTOCOL)
-# exit()
+### label - idx mapping정보 가져오기
+import pickle
+with open('data/label_to_idx.pickle', 'rb') as f:
+    label_to_idx = pickle.load(f)
+
 
 #데이터 생성
 X_train, X_test, y_train, y_test = train_test_split(keypoint_load, label_list, test_size = 0.2, random_state=42, stratify=label_list)

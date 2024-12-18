@@ -3,7 +3,7 @@ import mediapipe as mp
 import numpy as np
 import torch
 from st_gcn import STGCN
-
+import pickle
 
 
 def extract_keypoints(result):
@@ -67,6 +67,13 @@ loaded_model.load_state_dict(torch.load("model/best_model_4.pth", map_location=t
 
 keypoint_sequence = []
 
+### label - idx mapping정보 가져오기
+with open('data/label_to_idx.pickle', 'rb') as f:
+    label_to_idx = pickle.load(f)
+idx_to_label = {value : key for key, value in label_to_idx.items()} ## idx로 label접근
+# print(idx_to_label)
+# exit()
+
 # 이미지 입력 캡처 및 처리
 # media pipe 는 RGB
 while cap.isOpened():
@@ -88,7 +95,10 @@ while cap.isOpened():
 
         output = loaded_model(data_preprocessing(np.array(sequence)))
         prediction = torch.argmax(output, dim=1)
-        print('prediction ', prediction)
+        prediction_value = prediction.item()
+        print('prediction ', prediction_value, ':', idx_to_label[prediction_value])
+        print('acc ', output[0, prediction_value]) # (batch, class)
+
 
 
 
