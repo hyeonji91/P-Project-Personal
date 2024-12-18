@@ -214,7 +214,7 @@ def evaluate(model, dataloader, criterion):
 
 ### hyperparameter setting ###
 batch_size = 400
-epochs = 400
+epochs = 600
 learning_rate = 0.01
 
 ### GPU Setting ###
@@ -224,15 +224,15 @@ print(DEVICE)
 set_env(42) # 시드고정
 
 ### setting wandb ###
-# wandb.init(project="sign-language-st-gcn",
-#
-#            config = {
-#                "batch_size": batch_size,
-#                "epochs": epochs,
-#                "learning_rate" : learning_rate
-#            })
+wandb.init(project="sign-language-st-gcn",
 
-#
+           config = {
+               "batch_size": batch_size,
+               "epochs": epochs,
+               "learning_rate" : learning_rate
+           })
+
+
 num_of_video = 3000
 # if DEVICE == torch.device("cuda"):
 #     video_root_path = "/media/vom/HDD1/hj/p-project/0001~3000(video)"
@@ -269,6 +269,7 @@ label_list = np.array(label_list[:num_of_video])
 import pickle
 with open('data/label_to_idx.pickle', 'rb') as f:
     label_to_idx = pickle.load(f)
+print(label_to_idx)
 
 
 #데이터 생성
@@ -298,7 +299,7 @@ for epoch in tqdm(range(epochs), desc="train time", ):
 
     if val_accuracy > best:
         best = val_accuracy
-        torch.save(model.state_dict(), "model/best_model_4.pth")
+        torch.save(model.state_dict(), "model/best_model.pth")
     print(f'[{epoch}] Validation Loss : {val_loss:.4f}, Accuracy : {val_accuracy:.4f}%')
 
 print("[FINISH]", best)
