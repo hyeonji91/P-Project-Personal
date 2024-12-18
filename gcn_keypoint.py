@@ -215,7 +215,7 @@ def evaluate(model, dataloader, criterion):
 ### hyperparameter setting ###
 batch_size = 400
 epochs = 400
-learning_rate = 0.001
+learning_rate = 0.01
 
 ### GPU Setting ###
 USE_CUDA = torch.cuda.is_available()
@@ -295,8 +295,8 @@ for epoch in tqdm(range(epochs), desc="train time", ):
 
     if val_accuracy > best:
         best = val_accuracy
-        torch.save(model.state_dict(), "model/best_model.pth")
+        torch.save(model.state_dict(), "model/best_model_4.pth")
     print(f'[{epoch}] Validation Loss : {val_loss:.4f}, Accuracy : {val_accuracy:.4f}%')
 
-print("[FINISH]")
+print("[FINISH]", best)
 
