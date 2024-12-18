@@ -2,7 +2,7 @@ import cv2
 import mediapipe as mp
 
 # 가져오기 및 초기화
-cap = cv2.VideoCapture("/media/vom/HDD1/hj/p-project/0001~3000(video)/KETI_SL_0000000001.avi")
+cap = cv2.VideoCapture(0)
 
 mp_holistic = mp.solutions.holistic
 holistic = mp_holistic.Holistic()

@@ -219,7 +219,7 @@ for video_path in video_path_list:
 
 print(keypoint_array)
 print(keypoint_array.shape)
-save_path = 'keypoint1~3000.npy'
+save_path = 'data/keypoint1~3000.npy'
 np.save(save_path, keypoint_array)
 
 keypoint_load = np.load(save_path)
