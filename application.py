@@ -63,7 +63,7 @@ mp_draw_styles = mp.solutions.drawing_styles
 ### 모델 가져오기 ###
 graph_args = {"layout": "mediapipe", "strategy": "spatial"}
 loaded_model = STGCN(in_channels=3, num_class=420, graph_args=graph_args, edge_importance_weighting=True)
-loaded_model.load_state_dict(torch.load("model/best_model_4.pth", map_location=torch.device('cpu')))
+loaded_model.load_state_dict(torch.load("model/best_model_5.pth", map_location=torch.device('cpu')))
 
 keypoint_sequence = []
 
@@ -73,6 +73,8 @@ with open('data/label_to_idx.pickle', 'rb') as f:
 idx_to_label = {value : key for key, value in label_to_idx.items()} ## idx로 label접근
 # print(idx_to_label)
 # exit()
+
+sentence = [" ", ]
 
 # 이미지 입력 캡처 및 처리
 # media pipe 는 RGB
@@ -90,14 +92,19 @@ while cap.isOpened():
     keypoint_sequence.append(keypoints)
     sequence = keypoint_sequence[-30:]  # 마지막 30 frame으로 prediction 한다
 
+
     if len(sequence) == 30:  # 30 프레임
-        print(np.shape(sequence))
 
         output = loaded_model(data_preprocessing(np.array(sequence)))
         prediction = torch.argmax(output, dim=1)
         prediction_value = prediction.item()
-        print('prediction ', prediction_value, ':', idx_to_label[prediction_value])
-        print('acc ', output[0, prediction_value]) # (batch, class)
+
+        if output[0, prediction_value]>4:
+            if idx_to_label[prediction_value] != sentence[-1]:
+                sentence.append(idx_to_label[prediction_value])
+
+                print('prediction ', prediction_value, ':', idx_to_label[prediction_value])
+                print('acc ', output[0, prediction_value]) # (batch, class)
 
 
 
